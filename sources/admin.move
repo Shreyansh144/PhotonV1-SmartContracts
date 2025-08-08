@@ -53,10 +53,10 @@ module PhotonResourceAddress::PhotonAdmin {
             admin: DEFAULT_ADMIN,
             created_at: timestamp::now_seconds(),
             coin_type: ZERO_ACCOUNT, // placeholder for coin type address
-            clientStore: ClientRegistry {
+            clientStore: ClientStore {
                 owner: ZERO_ACCOUNT,
-                clients: vector::empty(),
-                created_at: timestamp::now_seconds(),
+                clientMap: SimpleMap::empty(),
+                isProtocol: SimpleMap::empty(),
             },
             userStore: UserRegistry {
                 owner: ZERO_ACCOUNT,
@@ -77,42 +77,4 @@ module PhotonResourceAddress::PhotonAdmin {
         });
     }
 
-    // /// Internal assert: caller must be admin
-    // public fun assert_is_admin(caller: &signer) acquires Admin {
-    //     let addr = signer::address_of(caller);
-    //     assert!(exists<Admin>(addr), 1);
-    //     let admin_ref = borrow_global<Admin>(addr);
-    //     assert!(admin_ref.admin_address == addr, 2);
-    // }
-
-    // /// Read-only getters
-    // public fun admin_address_of(addr: address): option::Option<address> {
-    //     if (exists<Admin>(addr)) {
-    //         let a = borrow_global<Admin>(addr);
-    //         option::some(a.admin_address)
-    //     } else {
-    //         option::none()
-    //     }
-    // }
-
-    // /// Increase admin wallet balance (called by other modules to move internal numeric tokens to admin)
-    // public fun credit_admin_wallet(admin_addr: address, amount: u128) acquires Admin {
-    //     assert!(exists<Admin>(admin_addr), 3);
-    //     let admin_ref = borrow_global_mut<Admin>(admin_addr);
-    //     admin_ref.admin_wallet_balance = admin_ref.admin_wallet_balance + amount;
-    // }
-
-    // /// Decrease admin wallet balance (for payouts)
-    // public fun debit_admin_wallet(admin_addr: address, amount: u128) acquires Admin {
-    //     assert!(exists<Admin>(admin_addr), 4);
-    //     let admin_ref = borrow_global_mut<Admin>(admin_addr);
-    //     assert!(admin_ref.admin_wallet_balance >= amount, 5);
-    //     admin_ref.admin_wallet_balance = admin_ref.admin_wallet_balance - amount;
-    // }
-
-    // /// Query admin numeric balance
-    // public fun get_admin_wallet_balance(admin_addr: address): u128 acquires Admin {
-    //     assert!(exists<Admin>(admin_addr), 6);
-    //     borrow_global<Admin>(admin_addr).admin_wallet_balance
-    // }
 }
