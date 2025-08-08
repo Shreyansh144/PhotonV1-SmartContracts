@@ -1,0 +1,11 @@
+[package]
+name = "PATCoin::pat_coin"
+version = "1.0.0"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "mainnet" }
+AptosStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-stdlib/", rev = "mainnet" }
+
+[addresses]
+PATCoin = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
+admin = "760637102c573ea852d0da8865872d62f04c2d8f145e4545a18a28f634698eeb"
