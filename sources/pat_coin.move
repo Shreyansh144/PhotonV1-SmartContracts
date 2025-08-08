@@ -1,7 +1,7 @@
 /// A 2-in-1 module that combines managed_fungible_asset and coin_example into one module that when deployed, the
 /// deployer will be creating a new managed fungible asset with the hardcoded supply config, name, symbol, and decimals.
 /// The address of the asset can be obtained via get_metadata(). As a simple version, it only deals with primary stores.
-module PATCoin::pat_coin{
+module PhotonResourceAddress::pat_coin{
     use aptos_framework::fungible_asset::{Self, MintRef, TransferRef, BurnRef, Metadata, FungibleAsset, FungibleStore};
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
@@ -29,6 +29,7 @@ module PATCoin::pat_coin{
     const PAT_DECIMALS: u8 = 8;
     const PROJECT_URI: vector<u8> = b"http://example.com";
     const ICON_URI: vector<u8> = b"http://example.com/favicon.ico";
+    
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     /// Hold refs to control the minting, transfer and burning of fungible assets.
