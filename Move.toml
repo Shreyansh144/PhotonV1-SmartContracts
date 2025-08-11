@@ -1,13 +1,15 @@
 [package]
-name = "PhotonAdmin"
+name = "pat_coin"
 version = "1.0.0"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "mainnet" }
-AptosStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-stdlib/", rev = "mainnet" }
 
 [addresses]
-PhotonDevAddress = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
-PhotonResourceAddress = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
+photon_dev = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
 zero = "0000000000000000000000000000000000000000000000000000000000000000"
-default_admin = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316" #needs to update
+photon_admin = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316" #needs to update
+photon_pat_token = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
+processors1 = "0x1"
+processors2 = "0x2"
+processors3 = "0x3"

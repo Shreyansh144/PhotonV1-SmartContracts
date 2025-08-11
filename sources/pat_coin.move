@@ -1,7 +1,7 @@
 /// A 2-in-1 module that combines managed_fungible_asset and coin_example into one module that when deployed, the
 /// deployer will be creating a new managed fungible asset with the hardcoded supply config, name, symbol, and decimals.
 /// The address of the asset can be obtained via get_metadata(). As a simple version, it only deals with primary stores.
-module PhotonResourceAddress::pat_coin{
+module photon_pat_token::pat_coin{
     use aptos_framework::fungible_asset::{Self, MintRef, TransferRef, BurnRef, Metadata, FungibleAsset, FungibleStore};
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
@@ -12,6 +12,9 @@ module PhotonResourceAddress::pat_coin{
     use std::signer;
     use std::string::{Self, utf8};
     use std::option;
+
+    const PATCoin: address = @photon_pat_token;
+
 
     /// Only fungible asset metadata owner can make changes.
     const ENOT_OWNER: u64 = 1;
@@ -75,7 +78,7 @@ module PhotonResourceAddress::pat_coin{
 
     #[view]
     public fun pat_address(): address {
-        object::create_object_address(&@PATCoin, PAT_SYMBOL)
+        object::create_object_address(&PATCoin, PAT_SYMBOL)
     }
 
     #[view]
@@ -111,7 +114,7 @@ module PhotonResourceAddress::pat_coin{
             mint_ref: fungible_asset::generate_mint_ref(constructor_ref),
             burn_ref: fungible_asset::generate_burn_ref(constructor_ref),
             transfer_ref: fungible_asset::generate_transfer_ref(constructor_ref),
-            admin: @admin,
+            admin: @photon_admin,
             pending_admin: @0x0,
             }
         ); // <:!:initialize
@@ -147,7 +150,7 @@ module PhotonResourceAddress::pat_coin{
     #[view]
     /// Return the address of the managed fungible asset that's created when this module is deployed.
     public fun get_metadata(): Object<Metadata> {
-        let asset_address = object::create_object_address(&@PATCoin, PAT_SYMBOL);
+        let asset_address = object::create_object_address(&PATCoin, PAT_SYMBOL);
         object::address_to_object<Metadata>(asset_address)
     }
 
@@ -232,7 +235,7 @@ module PhotonResourceAddress::pat_coin{
     public entry fun set_pause(pauser: &signer, paused: bool) acquires State,ManagedFungibleAsset {
         assert_is_admin(pauser);
         let asset = get_metadata();
-        let state = borrow_global_mut<State>(object::create_object_address(&@PATCoin, PAT_SYMBOL));
+        let state = borrow_global_mut<State>(object::create_object_address(&PATCoin, PAT_SYMBOL));
         if (state.paused == paused) { return };
         state.paused = paused;
     }
@@ -245,7 +248,7 @@ module PhotonResourceAddress::pat_coin{
     /// Assert that the PAT coin is not paused.
     /// OPTIONAL
     fun assert_not_paused() acquires State {
-        let state = borrow_global<State>(object::create_object_address(&@PATCoin, PAT_SYMBOL));
+        let state = borrow_global<State>(object::create_object_address(&PATCoin, PAT_SYMBOL));
         assert!(!state.paused, EPAUSED);
     }
 

@@ -1,80 +1,69 @@
-module PhotonResourceAddress::PhotonAdmin {
+module photon_admin::PhotonAdmin {
     use std::signer;
     use std::vector;
-    use std::client_registry;
-    use std::user_registry;
-    use std::user_registry;
-    use PhotonResourceAddress::client_registry::{Self, ClientRegistry};
-    use PhotonResourceAddress::user_registry::{Self, UserRegistry};
-    use PhotonResourceAddress::merchant_registry::{Self, MerchantStoreManager};
+    use aptos_framework::account;
+    use aptos_framework::resource_account;
 
-    const DEV: address = @PhotonDevAddress;
+    const DEV: address = @photon_dev;
     const ZERO_ACCOUNT: address = @zero;
-    const DEFAULT_ADMIN: address = @default_admin;
-    const RESOURCE_ACCOUNT: address = @PhotonResourceAddress;
+    const PHOTON_ADMIN: address = @photon_admin;
 
+    const ERROR_NOT_ADMIN: u64 = 0;
+    const ERROR_INVALID_PERCENT: u64 = 1;
+    const ERROR_INVALID_ADDRESS: u64 = 2;
 
-    const ADMIN_NOT_FOUND: u64 = 1;
-    const TOKEN_DECIMALS: u64 = 100000000;
-
-
-    struct AdminInfo has key, store {
+    struct Capabilities has key {
         signer_cap: account::SignerCapability,
-        admin_address: address,
-        created_at: u64,
-        coin_type: address,
-        clientStore: ClientRegistry,
-        userStore: UserRegistry,
-        totalSpend: u128,
-        campaignStore: MerchantStoreManager,
+        admin: address,
         whitelisted_processors: vector<address>,
+        params: SetPlatformFeeParams,
+    }
+
+    struct SetPlatformFeeParams has copy, store {
         platform_spend_fee_percent: u8,
         platform_earn_fee_percent: u8
     }
 
-    /// Initialize the Admin resource on the deployer/admin account.
-    public entry fun initialize(admin_signer: &signer) {
-        let addr = signer::address_of(admin_signer);
-        assert!(!exists<Admin>(addr), 0);
-        move_to(admin_signer, Admin {
-            admin_address: addr,
-            admin_wallet_balance: u128,
-            created_at: timestamp::now_seconds(),
+    fun init_module(sender: &signer) {
+        let signer_cap = resource_account::retrieve_resource_account_cap(sender, DEV);
+        let whitelisted_processors = vector[@processors1, @processors2, @processors3];
+        let params = SetPlatformFeeParams {
+            platform_spend_fee_percent: 0,
+            platform_earn_fee_percent: 0
+        };
+
+        move_to(sender, Capabilities {
+            signer_cap,
+            admin: PHOTON_ADMIN,
+            whitelisted_processors,
+            params: params
         });
     }
 
-    fun init_module(sender: &signer) {
-        let signer_cap = resource_account::retrieve_resource_account_cap(sender, DEV);
-        let resource_signer = account::create_signer_with_capability(&signer_cap);
-        assert!(!exists<AdminInfo>(addr), ADMIN_NOT_FOUND);
+    public entry fun add_whitelisted_processor(admin: &signer, new_processor: address) acquires Capabilities {
+        let capabilities = borrow_global_mut<Capabilities>(PHOTON_ADMIN);
 
-        move_to(&resource_signer, AdminInfo {
-            signer_cap: signer_cap,
-            admin: DEFAULT_ADMIN,
-            created_at: timestamp::now_seconds(),
-            coin_type: ZERO_ACCOUNT, // placeholder for coin type address
-            clientStore: ClientStore {
-                owner: ZERO_ACCOUNT,
-                clientMap: SimpleMap::empty(),
-                isProtocol: SimpleMap::empty(),
-            },
-            userStore: UserRegistry {
-                owner: ZERO_ACCOUNT,
-                users: vector::empty(),
-                created_at: timestamp::now_seconds(),
-            },
-            totalSpend: 0, // total spend in numeric tokens
-            campaignStore: MerchantStoreManager {
-                owner: ZERO_ACCOUNT,
-                merchant_accounts: vector::empty(),
-                wallet_balance: 0,
-                coin_type_address: ZERO_ACCOUNT,
-                created_at: timestamp::now_seconds(),
-            },
-            whitelisted_processors: vector::empty(),
-            platform_spend_fee_percent: 0, // default 0%
-            platform_earn_fee_percent: 0, // default 0%
-        });
+        assert!(signer::address_of(admin) == capabilities.admin, ERROR_NOT_ADMIN);
+        assert!(new_processor != ZERO_ACCOUNT, ERROR_INVALID_ADDRESS);
+
+        if (vector::contains(&capabilities.whitelisted_processors, &new_processor)) {
+            return;
+        };
+        vector::push_back(&mut capabilities.whitelisted_processors, new_processor);
+    }
+
+    public entry fun change_fee_params(
+        admin: &signer,
+        platform_spend_fee_percent: u8,
+        platform_earn_fee_percent: u8
+    ) acquires Capabilities {
+        let capabilities = borrow_global_mut<Capabilities>(PHOTON_ADMIN);
+
+        assert!(signer::address_of(admin) == capabilities.admin, ERROR_NOT_ADMIN);
+        assert!(platform_spend_fee_percent <= 100 && platform_earn_fee_percent <= 100, ERROR_INVALID_PERCENT);
+
+        capabilities.params.platform_spend_fee_percent = platform_spend_fee_percent;
+        capabilities.params.platform_earn_fee_percent = platform_earn_fee_percent;
     }
 
 }
