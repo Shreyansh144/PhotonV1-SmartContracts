@@ -20,6 +20,8 @@ module photon_admin::PhotonMerchantManagerModule {
         owner: address,
     }
 
+    
+
     // ====== Merchant resource stored at admin address ======
     struct MerchantStoreManager has key, store {
         merchant_total_wallet_balance: u128, // numeric pool that holds PAT for merchant operations

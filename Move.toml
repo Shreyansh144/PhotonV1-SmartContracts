@@ -6,9 +6,9 @@ version = "1.0.0"
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", subdir = "aptos-framework", rev = "mainnet" }
 
 [addresses]
-photon_dev = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
+photon_dev = "0x9341e4c8eaca44210528a0df5e100bbfe3b2d6fd00a9272c4b772b688cdd3636"
 zero = "0000000000000000000000000000000000000000000000000000000000000000"
-photon_admin = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316" #needs to update
+photon_admin = "0x9341e4c8eaca44210528a0df5e100bbfe3b2d6fd00a9272c4b772b688cdd3636" #needs to update
 photon_pat_token = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
 processors1 = "0x1"
 processors2 = "0x2"

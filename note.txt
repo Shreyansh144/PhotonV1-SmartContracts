@@ -8,7 +8,9 @@ move_to(admin, UserCap {
 }) needs to mention in adminRegistry
 
 8. user_registry: 152 //needs to add transfer tokens from admin via pat_coin
+
 9. need to initialize_admin() in user_registry, campaign_registry in adminRegistry
+
 10. key:name in struct
 
 11. IMPORTANT: keep remember logic for whilelisted processors, currently we r callingg through admin not through processors
@@ -16,3 +18,5 @@ move_to(admin, UserCap {
 12. needs to add pat_coin-transfer in each of the modules
 
 13. aptos connect: takealook 
+
+14. need to work on spend_manager(not done yet)
