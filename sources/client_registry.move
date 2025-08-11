@@ -49,7 +49,7 @@ module photon_admin::PhotonClientModule {
     }
 
     // Map to store client seeds and corresponding resource account address
-    struct ClientStore has key {
+    struct ClientStore has key, copy, store {
         clientMap: SimpleMap<vector<u8>, address>,
         isProtocol: SimpleMap<address, bool>,
         global_earn_onboarding_fee_percent: u8,
@@ -76,28 +76,7 @@ module photon_admin::PhotonClientModule {
 
 
 
-    // Helper that takes an address (safe because it returns a reference based on a parameter)
-    fun borrow_client_registry_by_addr(client_addr: address): &ClientRegistry acquires ClientRegistry {
-        borrow_global<ClientRegistry>(client_addr)
-    }
-
-    fun borrow_client_registry_mut_by_addr(client_addr: address): &mut ClientRegistry acquires ClientRegistry {
-        borrow_global_mut<ClientRegistry>(client_addr)
-    }
-
-    public fun get_client(admin: &signer, client_seeds: vector<u8>): &ClientRegistry
-        acquires Admin, ClientStore, ClientRegistry {
-        assert_admin(admin);
-        let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        borrow_client_registry_by_addr(client_addr)
-    }
-
-    public fun get_client_mut(admin: &signer, client_seeds: vector<u8>): &mut ClientRegistry
-        acquires Admin, ClientStore, ClientRegistry {
-        assert_admin(admin);
-        let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        borrow_client_registry_mut_by_addr(client_addr)
-    }
+    // Removed functions that returned references to satisfy Move borrow checker.
 
     // ====== Initialize admin and events ======
     public entry fun initialize_client_store(admin: &signer) {
@@ -180,14 +159,14 @@ module photon_admin::PhotonClientModule {
     public entry fun set_active(admin: &signer, client_seeds: vector<u8>, active: bool) acquires Admin, ClientStore, ClientRegistry {
         assert_admin(admin);
         let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        let client_ref = borrow_client_registry_mut_by_addr(client_addr);
+        let client_ref = borrow_global_mut<ClientRegistry>(client_addr);
         client_ref.active = active;
     }
 
     public entry fun set_kyc(admin: &signer, client_seeds: vector<u8>, verified: bool) acquires Admin, ClientStore, ClientRegistry {
         assert_admin(admin);
         let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        let client_ref = borrow_client_registry_mut_by_addr(client_addr);
+        let client_ref = borrow_global_mut<ClientRegistry>(client_addr);
         client_ref.is_kyc_verified = verified;
     }
 
@@ -200,7 +179,7 @@ module photon_admin::PhotonClientModule {
     ) acquires Admin, ClientStore, ClientRegistry {
         assert_admin(admin);
         let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        let client_ref = borrow_client_registry_mut_by_addr(client_addr);
+        let client_ref = borrow_global_mut<ClientRegistry>(client_addr);
         // Optional: add range checks if needed (e.g., <= 100)
         client_ref.local_earn_onboarding_fee_percent = earn_fee;
         client_ref.local_spend_token_onboarding_client_fee_percent = spend_onboarding_fee;
@@ -221,7 +200,7 @@ module photon_admin::PhotonClientModule {
         // assert!(coin::balance<CoinType>(admin_addr) >= amount, error::invalid_argument(E_OWNER_NOT_HAVING_ENOUGH_COIN));
         
         let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        let client_ref = borrow_client_registry_mut_by_addr(client_addr);
+        let client_ref = borrow_global_mut<ClientRegistry>(client_addr);
         
         // Transfer coins from admin to client resource account
         // coin::transfer<CoinType>(admin, client_addr, amount);
@@ -239,7 +218,7 @@ module photon_admin::PhotonClientModule {
         assert_admin(admin);
         let admin_addr = signer::address_of(admin);
         let client_addr = get_client_address_or_abort(admin, &client_seeds);
-        let client_ref = borrow_client_registry_mut_by_addr(client_addr);
+        let client_ref = borrow_global_mut<ClientRegistry>(client_addr);
         
         if (client_ref.total_tokens_earned < client_ref.total_tokens_spent + amount) {
             abort E_INSUFFICIENT_BALANCE;
