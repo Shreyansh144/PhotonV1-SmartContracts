@@ -1,9 +1,9 @@
 [package]
-name = "pat_coin"
+name = "PhotonClientModule"
 version = "1.0.0"
 
 [dependencies]
-AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "mainnet" }
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", subdir = "aptos-framework", rev = "mainnet" }
 
 [addresses]
 photon_dev = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
