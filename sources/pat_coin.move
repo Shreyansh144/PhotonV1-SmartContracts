@@ -202,6 +202,24 @@ module pat_token_deployer::pat_coin{
         deposit(to_wallet, pat, transfer_ref);
     }
 
+     /// Transfer as the owner of metadata object ignoring `frozen` field.
+    public entry fun transfer(from: &signer, to: address, amount: u64) acquires ManagedFungibleAsset, State {
+        assert_not_paused();
+        let from_addr = signer::address_of(from);
+        let transfer_ref = &borrow_global<ManagedFungibleAsset>(pat_address()).transfer_ref;
+
+        let from_wallet = primary_fungible_store::primary_store(from_addr, get_metadata());
+        let to_wallet = primary_fungible_store::ensure_primary_store_exists(to, get_metadata());
+        let pat = withdraw(from_wallet, amount, transfer_ref);
+        deposit(to_wallet, pat, transfer_ref);
+    }
+
+    public fun balance(owner: address): u64 {
+        let metadata = get_metadata();
+        let store = primary_fungible_store::primary_store(owner, metadata);
+        fungible_asset::balance(store)
+    }
+
     /// Burn fungible assets as the owner of metadata object.
     public entry fun burn(admin: &signer, from: address, amount: u64) acquires ManagedFungibleAsset {
         assert_is_admin(admin);
@@ -251,5 +269,7 @@ module pat_token_deployer::pat_coin{
         let state = borrow_global<State>(object::create_object_address(&PATCoin, PAT_SYMBOL));
         assert!(!state.paused, EPAUSED);
     }
+
+    
 
 }
