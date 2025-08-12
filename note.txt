@@ -20,3 +20,7 @@ move_to(admin, UserCap {
 13. aptos connect: takealook 
 
 14. need to work on spend_manager(not done yet)
+
+15. User name and onboarding ClientRegistry
+
+16. simpleMap isDeprecated

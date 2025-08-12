@@ -1,4 +1,4 @@
-module photon_admin::PhotonMerchantManagerModule {
+module photon_merchant_deployer::PhotonMerchantManagerModule {
     use std::signer;
     use std::timestamp;
     use std::vector;

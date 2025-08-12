@@ -1,4 +1,4 @@
-module photon_admin::PhotonAdmin {
+module photon_admin_deployer::PhotonAdmin {
     use std::signer;
     use std::vector;
     use aptos_framework::account;
@@ -13,7 +13,7 @@ module photon_admin::PhotonAdmin {
     const ERROR_INVALID_ADDRESS: u64 = 2;
 
     struct Capabilities has key {
-        signer_cap: account::SignerCapability,
+        // signer_cap: account::SignerCapability,
         admin: address,
         whitelisted_processors: vector<address>,
         params: SetPlatformFeeParams,
@@ -24,8 +24,8 @@ module photon_admin::PhotonAdmin {
         platform_earn_fee_percent: u8
     }
 
-    fun init_module(sender: &signer) {
-        let signer_cap = resource_account::retrieve_resource_account_cap(sender, DEV);
+    public entry fun init_admin(sender: &signer) {
+        // let signer_cap = resource_account::retrieve_resource_account_cap(sender, DEV);
         let whitelisted_processors = vector[@processors1, @processors2, @processors3];
         let params = SetPlatformFeeParams {
             platform_spend_fee_percent: 0,
@@ -33,7 +33,7 @@ module photon_admin::PhotonAdmin {
         };
 
         move_to(sender, Capabilities {
-            signer_cap,
+            // signer_cap,
             admin: PHOTON_ADMIN,
             whitelisted_processors,
             params: params

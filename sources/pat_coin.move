@@ -192,7 +192,6 @@ module photon_pat_token::pat_coin{
 
     /// Transfer as the owner of metadata object ignoring `frozen` field.
     public entry fun transfer(admin: &signer, from: address, to: address, amount: u64) acquires ManagedFungibleAsset, State {
-        assert_is_admin(admin);
         assert_not_paused();
         let transfer_ref = &borrow_global<ManagedFungibleAsset>(pat_address()).transfer_ref;
 

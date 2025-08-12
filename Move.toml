@@ -1,15 +1,19 @@
 [package]
-name = "PhotonMerchantManagerModule"
+name = "PhotonUsersModule "
 version = "1.0.0"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", subdir = "aptos-framework", rev = "mainnet" }
 
 [addresses]
-photon_dev = "0x9341e4c8eaca44210528a0df5e100bbfe3b2d6fd00a9272c4b772b688cdd3636"
+photon_dev = "48561c322e6c0f53609573ead6006d6565a04b9f7f0a409a88f6f84dcc2b9680"
 zero = "0000000000000000000000000000000000000000000000000000000000000000"
-photon_admin = "0x9341e4c8eaca44210528a0df5e100bbfe3b2d6fd00a9272c4b772b688cdd3636" #needs to update
+photon_admin = "48561c322e6c0f53609573ead6006d6565a04b9f7f0a409a88f6f84dcc2b9680" #needs to update
 photon_pat_token = "0xc5a3e51548069feb1f58244b4acc50124a4a7963bb0e7169e1aa7de5c2046316"
+photon_admin_deployer = "0x62b776affd3bdf0e74e64e965d0b46aa8b47e60602236946b84c1bdad9c858b3"
+photon_client_deployer = "0x47c62db39cb0da2c326d02f7117b4bcace6b27b3f6446dd6cfbdc7a7f57727ec"
+photon_merchant_deployer = "0x350de2e3b4ea453f213918177cf002763ed801789ddce9185bfbcc3ac4c90bac"
+photon_user_module_deployer = "0x6f8677a235fc452547d6ccdfdb30359f3d00616c382cc33050a620b44fcaa3ac"
 processors1 = "0x1"
 processors2 = "0x2"
 processors3 = "0x3"

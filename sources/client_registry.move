@@ -1,4 +1,4 @@
-module photon_admin::PhotonClientModule {
+module photon_client_deployer::PhotonClientModule {
     use std::signer;
     // use std::vector;
     // use std::string;
@@ -10,6 +10,8 @@ module photon_admin::PhotonClientModule {
     use aptos_framework::account;
     // use aptos_framework::coin::{Self, Coin};
     // use aptos_framework::managed_coin;
+    use std::string::{String, utf8};
+
 
 
     const PHOTON_ADMIN: address = @photon_admin;
@@ -33,8 +35,8 @@ module photon_admin::PhotonClientModule {
 
     // ====== Client resource stored at resource account ======
     struct ClientRegistry has key, store, drop {
-        client_name: vector<u8>,         // name bytes
-        client_metadata: vector<u8>,     // metadata URI or hash as bytes
+        client_name: String,         // name bytes
+        client_metadata: String,     // metadata URI or hash as bytes
         client_wallet_address: address,      // on-chain address for the client's Aptos wallet
         created_at: u64,                 // unix timestamp
         active: bool,                    // active flag
@@ -104,8 +106,8 @@ module photon_admin::PhotonClientModule {
     // ====== Register client with resource account ======
     public entry fun register_client(
         admin: &signer,
-        name: vector<u8>,
-        metadata: vector<u8>,
+        name: String,
+        metadata: String,
         seeds: vector<u8>,
         isProtocol: bool,
         is_kyc_verified: bool
@@ -288,6 +290,20 @@ module photon_admin::PhotonClientModule {
         };
         let client_addr = *simple_map::borrow(&maps.clientMap, &client_seeds);
         simple_map::contains_key(&maps.isProtocol, &client_addr) && *simple_map::borrow(&maps.isProtocol, &client_addr)
+    }
+
+    #[view]
+    public fun get_client_address_by_seed(
+        admin_addr: address,
+        client_seeds: vector<u8>
+    ): address acquires ClientStore {
+        let maps = borrow_global<ClientStore>(admin_addr);
+
+        if (!simple_map::contains_key(&maps.clientMap, &client_seeds)) {
+            abort E_NOT_REGISTERED;
+        };
+
+        *simple_map::borrow(&maps.clientMap, &client_seeds)
     }
 
     // ====== Get client balance ======
