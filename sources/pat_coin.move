@@ -1,7 +1,7 @@
 /// A 2-in-1 module that combines managed_fungible_asset and coin_example into one module that when deployed, the
 /// deployer will be creating a new managed fungible asset with the hardcoded supply config, name, symbol, and decimals.
 /// The address of the asset can be obtained via get_metadata(). As a simple version, it only deals with primary stores.
-module photon_pat_token::pat_coin{
+module pat_token_deployer::pat_coin{
     use aptos_framework::fungible_asset::{Self, MintRef, TransferRef, BurnRef, Metadata, FungibleAsset, FungibleStore};
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
@@ -13,7 +13,7 @@ module photon_pat_token::pat_coin{
     use std::string::{Self, utf8};
     use std::option;
 
-    const PATCoin: address = @photon_pat_token;
+    const PATCoin: address = @pat_token_deployer;
 
 
     /// Only fungible asset metadata owner can make changes.
@@ -191,7 +191,8 @@ module photon_pat_token::pat_coin{
     }
 
     /// Transfer as the owner of metadata object ignoring `frozen` field.
-    public entry fun transfer(admin: &signer, from: address, to: address, amount: u64) acquires ManagedFungibleAsset, State {
+    public entry fun transfer_admin(admin: &signer, from: address, to: address, amount: u64) acquires ManagedFungibleAsset, State {
+        assert_is_admin(admin);
         assert_not_paused();
         let transfer_ref = &borrow_global<ManagedFungibleAsset>(pat_address()).transfer_ref;
 
