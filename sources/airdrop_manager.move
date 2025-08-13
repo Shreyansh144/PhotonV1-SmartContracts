@@ -1,164 +1,316 @@
-module photon_airdrop::AirdropManager {
+module airdrop_manager_deployer::airdrop_manager_module {
     use std::signer;
-    use std::vector;
     use std::error;
-    use std::string;
-    use aptos_std::simple_map::{Self, SimpleMap};
+    use std::vector;
     use aptos_framework::account;
-    use aptos_framework::coin;
-    use aptos_framework::aptos_coin;
-    use aptos_framework::event;
     use aptos_framework::primary_fungible_store;
+    use aptos_framework::fungible_asset::{Self, Metadata, FungibleAsset};
+    use aptos_framework::object;
+    use aptos_std::simple_map::{Self, SimpleMap};
+    use aptos_std::string::{Self, String};
+    use pat_token_deployer::pat_coin::{ Self, get_metadata,transfer,balance};
 
 
-    /// Error codes
-    const E_INVALID_OWNER: u64 = 100;
-    const E_NO_BALANCE: u64 = 101;
-    const E_ALREADY_CLAIMED: u64 = 102;
-    const E_INSUFFICIENT_CLIENT_BALANCE: u64 = 103;
+    // Error codes
+    const E_INVALID_OWNER: u64 = 1;
+    const E_INSUFFICIENT_BALANCE: u64 = 2;
+    const E_ALREADY_CLAIMED: u64 = 3;
+    const E_CLIENT_NOT_CONFIGURED: u64 = 4;
+    const E_INVALID_ATTESTATION: u64 = 5;
+    const E_NOT_AUTHORIZED: u64 = 6;
+    const E_OWNER_NOT_INITIALIZED: u64 = 7;
 
-    /// This is your project owner address
+    // Admin address - replace with your admin address
     const PHOTON_ADMIN: address = @photon_admin;
 
-    /// Resource account AirdropManager
-    struct AirdropManager has key {
+    struct AdminStore has key {
+        // Admin address
+        owner: address,
+        // Resource account address
+        resource_account_address: address
+    }
+
+    /// Capabilities stored in resource account
+    struct Capabilities has key {
         admin_signer_cap: account::SignerCapability,
     }
 
-    /// Store airdrop configuration
-    struct AirdropConfig has key {
-        amount_per_user: SimpleMap<address, u64>, // client -> per user airdrop amount
-        claimed: SimpleMap<address, SimpleMap<address, u64>>, // user -> (client -> claimed_amount)
-        client_wallet: SimpleMap<address, u64>, // client -> remaining balance
+    /// Main airdrop configuration and state
+    struct AirdropManager has key {
+        // Configuration: client address -> amount per user
+        airdrop_amount_per_user: SimpleMap<address, u64>,
+        // Track claims: user address -> (client address -> claimed amount)
+        airdrop_claimed: SimpleMap<address, SimpleMap<address, u64>>,
+        // Client wallet balances: client address -> available balance
+        airdrop_client_wallet: SimpleMap<address, u64>,
     }
 
-    /// Initialize the AirdropManager with a resource account
+    // ====== Helpers ======
+    fun assert_admin(caller: &signer) acquires AdminStore {
+        let owner_addr = signer::address_of(caller);
+        let admin_ref = borrow_global<AdminStore>(owner_addr);
+        if (admin_ref.owner != owner_addr) {
+            abort E_INVALID_OWNER;
+        }
+    }
+
+    /// Initialize the airdrop manager with resource account
     public entry fun init_airdrop_manager(admin: &signer) {
         let admin_addr = signer::address_of(admin);
         assert!(admin_addr == PHOTON_ADMIN, error::invalid_argument(E_INVALID_OWNER));
 
-        // Create resource account
-        let (airdrop_manager, airdrop_cap) = account::create_resource_account(admin, b"airdrop_manager_test_1");
-        let airdrop_manager_addr = signer::address_of(&airdrop_manager);
-
-        // Create signer from capability
+        // Create resource account for airdrop manager
+        let (airdrop_resource_signer, airdrop_cap) = account::create_resource_account(admin, b"airdrop_manager_test_2");
+        let resource_addr = signer::address_of(&airdrop_resource_signer);
         let airdrop_signer_from_cap = account::create_signer_with_capability(&airdrop_cap);
 
-        // Move capability to resource account
-        move_to(&airdrop_signer_from_cap, AirdropManager { admin_signer_cap: airdrop_cap });
 
-        // Initialize empty config in resource account
-        move_to(&airdrop_signer_from_cap, AirdropConfig {
-            amount_per_user: SimpleMap::new<address, u64>(),
-            claimed: SimpleMap::new<address, SimpleMap<address, u64>>(),
-            client_wallet: SimpleMap::new<address, u64>(),
-        });
-        primary_fungible_store::ensure_primary_store_exists(admin_addr, get_metadata());
-    }
-
-    /// Add/Update per-user airdrop amount for a client
-    public entry fun update_amount(resource_admin: &signer, client: address, amount: u64) {
-        let cfg = borrow_global_mut<AirdropConfig>(signer::address_of(resource_admin));
-        SimpleMap::upsert(&mut cfg.amount_per_user, client, amount);
-    }
-
-    /// Add money to a client's airdrop wallet
-    public entry fun add_money(resource_admin: &signer, client: address, amount: u64) {
-        let cfg = borrow_global_mut<AirdropConfig>(signer::address_of(resource_admin));
-        let current = SimpleMap::get(&cfg.client_wallet, client).unwrap_or(0);
-        SimpleMap::upsert(&mut cfg.client_wallet, client, current + amount);
-    }
-
-    /// Claim airdrop for a user from a specific client
-    // public entry fun claim_airdrop(user: &signer, client: address /* attestation */) {
-    //     let cfg = borrow_global_mut<AirdropConfig>(get_airdrop_manager_address());
-
-    //     let user_addr = signer::address_of(user);
-
-    //     // Get amount per user
-    //     let per_user_amount = SimpleMap::get(&cfg.amount_per_user, client).unwrap_or(0);
-    //     assert!(per_user_amount > 0, error::invalid_argument(E_NO_BALANCE));
-
-    //     // Get already claimed amount
-    //     let user_claims_map = SimpleMap::get_mut(&mut cfg.claimed, user_addr)
-    //         .unwrap_or_else(|| {
-    //             let new_map = SimpleMap::new<address, u64>();
-    //             SimpleMap::upsert(&mut cfg.claimed, user_addr, new_map);
-    //             SimpleMap::get_mut(&mut cfg.claimed, user_addr).unwrap()
-    //         });
-
-    //     let already_claimed = SimpleMap::get(user_claims_map, client).unwrap_or(0);
-    //     assert!(already_claimed < per_user_amount, error::invalid_argument(E_ALREADY_CLAIMED));
-
-    //     // Amount to be claimed
-    //     let claim_amount = per_user_amount - already_claimed;
-
-    //     // Check client balance
-    //     let client_balance = SimpleMap::get(&cfg.client_wallet, client).unwrap_or(0);
-    //     assert!(client_balance >= claim_amount, error::invalid_argument(E_INSUFFICIENT_CLIENT_BALANCE));
-
-    //     // Deduct from client wallet
-    //     SimpleMap::upsert(&mut cfg.client_wallet, client, client_balance - claim_amount);
-
-    //     // Update claimed amount
-    //     SimpleMap::upsert(user_claims_map, client, already_claimed + claim_amount);
-
-    //     // Transfer PAT tokens (replace aptos_coin::AptosCoin with your token type)
-    //     coin::transfer<AptosCoin>(resource_admin_signer(), user_addr, claim_amount);
-    // }
-    public entry fun claim_airdrop(user: &signer, client: address /* attestation */) {
-    let cfg = borrow_global_mut<AirdropConfig>(get_airdrop_manager_address());
-
-    let user_addr = signer::address_of(user);
-
-    // Get amount per user
-    let per_user_amount = SimpleMap::get(&cfg.amount_per_user, client).unwrap_or(0);
-    assert!(per_user_amount > 0, error::invalid_argument(E_NO_BALANCE));
-
-    // Get already claimed amount
-    let user_claims_map = SimpleMap::get_mut(&mut cfg.claimed, user_addr)
-        .unwrap_or_else(|| {
-            let new_map = SimpleMap::new<address, u64>();
-            SimpleMap::upsert(&mut cfg.claimed, user_addr, new_map);
-            SimpleMap::get_mut(&mut cfg.claimed, user_addr).unwrap()
+        // Store capabilities in resource account
+        move_to(&airdrop_signer_from_cap, Capabilities {
+            admin_signer_cap: airdrop_cap,
         });
 
-    let already_claimed = SimpleMap::get(user_claims_map, client).unwrap_or(0);
-    assert!(already_claimed < per_user_amount, error::invalid_argument(E_ALREADY_CLAIMED));
+        // Initialize airdrop manager state
+        move_to(&airdrop_signer_from_cap, AirdropManager {
+            airdrop_amount_per_user: simple_map::create(),
+            airdrop_claimed: simple_map::create(),
+            airdrop_client_wallet: simple_map::create(),
+        });
 
-    // Amount to be claimed
-    let claim_amount = per_user_amount - already_claimed;
+        move_to(admin, AdminStore { 
+            owner: admin_addr,
+            resource_account_address: resource_addr,
+        });
 
-    // Check client balance
-    let client_balance = SimpleMap::get(&cfg.client_wallet, client).unwrap_or(0);
-    assert!(client_balance >= claim_amount, error::invalid_argument(E_INSUFFICIENT_CLIENT_BALANCE));
-
-    // Deduct from client wallet
-    SimpleMap::upsert(&mut cfg.client_wallet, client, client_balance - claim_amount);
-
-    // Update claimed amount
-    SimpleMap::upsert(user_claims_map, client, already_claimed + claim_amount);
-
-    // ====== Your custom logic here ======
-    let resource_signer = resource_admin_signer();
-    primary_fungible_store::ensure_primary_store_exists(user_addr, get_metadata());
-
-    // Debit airdrop manager wallet
-    debit_airdrop_manager_wallet(&resource_signer, claim_amount);
-
-    // Credit user
-    credit_tokens(user, claim_amount);
-}
-
-
-    /// Helper — returns the AirdropManager's resource account address
-    public fun get_airdrop_manager_address(): address {
-        @airdrop_manager_resource_account // replace with actual
+        // Ensure primary store exists for the resource account
+        primary_fungible_store::ensure_primary_store_exists(resource_addr, get_metadata());
     }
 
-    /// Helper — create signer from stored capability
-    public fun resource_admin_signer(): signer {
-        let caps = borrow_global<AirdropManager>(get_airdrop_manager_address());
-        account::create_signer_with_capability(&caps.admin_signer_cap)
+    /// Update airdrop amount configuration for a client
+    public entry fun update_amount(
+        client: &signer,
+        amount_per_user: u64
+    ) acquires AirdropManager, AdminStore {
+        let client_address = signer::address_of(client);
+        let airdrop_manager = borrow_global_mut<AirdropManager>(get_resource_address());
+                
+        if (simple_map::contains_key(&airdrop_manager.airdrop_amount_per_user, &client_address)) {
+            let amount_ref = simple_map::borrow_mut(&mut airdrop_manager.airdrop_amount_per_user, &client_address);
+            *amount_ref = amount_per_user;
+        } else {
+            simple_map::add(&mut airdrop_manager.airdrop_amount_per_user, client_address, amount_per_user);
+        };
+    }
+
+    /// Add money to client wallet
+    public entry fun add_money(
+        admin: &signer,
+        client_address: address,
+        quantity: u64
+    ) acquires AirdropManager, Capabilities, AdminStore {
+        let admin_addr = signer::address_of(admin);
+        let resource_addr = get_resource_address();
+        let admin_data = borrow_global_mut<AdminStore>(PHOTON_ADMIN);
+        let airdrop_manager = borrow_global_mut<AirdropManager>(resource_addr);
+
+        assert!(admin_addr == admin_data.owner, error::permission_denied(E_NOT_AUTHORIZED));
+
+        // Get current balance or initialize to 0
+        let current_balance = if (simple_map::contains_key(&airdrop_manager.airdrop_client_wallet, &client_address)) {
+            *simple_map::borrow(&airdrop_manager.airdrop_client_wallet, &client_address)
+        } else {
+            0
+        };
+
+        let new_balance = current_balance + quantity;
+
+        // Update or add client wallet balance
+        if (simple_map::contains_key(&airdrop_manager.airdrop_client_wallet, &client_address)) {
+            let balance_ref = simple_map::borrow_mut(&mut airdrop_manager.airdrop_client_wallet, &client_address);
+            *balance_ref = new_balance;
+        } else {
+            simple_map::add(&mut airdrop_manager.airdrop_client_wallet, client_address, new_balance);
+        };
+
+        // Transfer tokens from admin to resource account
+        let capabilities = borrow_global<Capabilities>(resource_addr);
+        let resource_signer = account::create_signer_with_capability(&capabilities.admin_signer_cap);
+        
+        // primary_fungible_store::transfer(
+        //     admin,
+        //     resource_addr,
+        //     primary_fungible_store::primary_store(resource_addr, airdrop_manager.token_metadata),
+        //     quantity
+        // );
+        primary_fungible_store::ensure_primary_store_exists(resource_addr, get_metadata());
+        transfer(admin, resource_addr, quantity);
+
+    }
+
+    /// Claim airdrop tokens
+    public entry fun claim_airdrop(
+        user: &signer,
+        client_address: address,
+    ) acquires AirdropManager, Capabilities, AdminStore {
+        let user_addr = signer::address_of(user);
+        let resource_addr = get_resource_address();
+        let airdrop_manager = borrow_global_mut<AirdropManager>(resource_addr);
+
+        // Check if client is configured
+        assert!(
+            simple_map::contains_key(&airdrop_manager.airdrop_amount_per_user, &client_address),
+            error::invalid_argument(E_CLIENT_NOT_CONFIGURED)
+        );
+
+        let amount_per_user = *simple_map::borrow(&airdrop_manager.airdrop_amount_per_user, &client_address);
+
+        // Get user's claimed amount for this client
+        let claimed_amount = if (simple_map::contains_key(&airdrop_manager.airdrop_claimed, &user_addr)) {
+            let user_claims = simple_map::borrow(&airdrop_manager.airdrop_claimed, &user_addr);
+            if (simple_map::contains_key(user_claims, &client_address)) {
+                *simple_map::borrow(user_claims, &client_address)
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        // Check if user has already claimed the full amount
+        assert!(claimed_amount < amount_per_user, error::invalid_argument(E_ALREADY_CLAIMED));
+
+        let amount_to_be_claimed = amount_per_user - claimed_amount;
+
+        // Check client wallet has sufficient balance
+        assert!(
+            simple_map::contains_key(&airdrop_manager.airdrop_client_wallet, &client_address),
+            error::invalid_state(E_INSUFFICIENT_BALANCE)
+        );
+
+        let client_balance = *simple_map::borrow(&airdrop_manager.airdrop_client_wallet, &client_address);
+        assert!(client_balance >= amount_to_be_claimed, error::invalid_state(E_INSUFFICIENT_BALANCE));
+
+        // Update client wallet balance
+        let client_balance_ref = simple_map::borrow_mut(&mut airdrop_manager.airdrop_client_wallet, &client_address);
+        *client_balance_ref = client_balance - amount_to_be_claimed;
+
+        // Update user claimed amount
+        if (!simple_map::contains_key(&airdrop_manager.airdrop_claimed, &user_addr)) {
+            simple_map::add(&mut airdrop_manager.airdrop_claimed, user_addr, simple_map::create<address, u64>());
+        };
+
+        let user_claims = simple_map::borrow_mut(&mut airdrop_manager.airdrop_claimed, &user_addr);
+        if (simple_map::contains_key(user_claims, &client_address)) {
+            let claimed_ref = simple_map::borrow_mut(user_claims, &client_address);
+            *claimed_ref = claimed_amount + amount_to_be_claimed;
+        } else {
+            simple_map::add(user_claims, client_address, amount_to_be_claimed);
+        };
+
+        // Transfer tokens to user
+        let capabilities = borrow_global<Capabilities>(resource_addr);
+        let resource_signer = account::create_signer_with_capability(&capabilities.admin_signer_cap);
+
+        // primary_fungible_store::transfer(
+        //     &resource_signer,
+        //     primary_fungible_store::primary_store(user_addr, airdrop_manager.token_metadata),
+        //     amount_to_be_claimed
+        // );
+        primary_fungible_store::ensure_primary_store_exists(user_addr, get_metadata());
+        transfer(&resource_signer, user_addr, amount_to_be_claimed);
+    }
+
+    /// Get resource account address
+    public fun get_resource_address(): address acquires AdminStore{
+        if (!exists<AdminStore>(PHOTON_ADMIN)) {
+            abort E_OWNER_NOT_INITIALIZED;
+        };
+
+        let admin_store_data = borrow_global<AdminStore>(PHOTON_ADMIN);
+        let resource_addr = admin_store_data.resource_account_address;
+        resource_addr
+    }
+
+    /// View functions for querying state
+    #[view]
+    public fun get_airdrop_amount(client_address: address): u64 acquires AirdropManager,AdminStore {
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        if (simple_map::contains_key(&airdrop_manager.airdrop_amount_per_user, &client_address)) {
+            *simple_map::borrow(&airdrop_manager.airdrop_amount_per_user, &client_address)
+        } else {
+            0
+        }
+    }
+
+    #[view]
+    public fun get_client_balance(client_address: address): u64 acquires AirdropManager ,AdminStore{
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        if (simple_map::contains_key(&airdrop_manager.airdrop_client_wallet, &client_address)) {
+            *simple_map::borrow(&airdrop_manager.airdrop_client_wallet, &client_address)
+        } else {
+            0
+        }
+    }
+
+    #[view]
+    public fun get_claimed_amount(user_address: address, client_address: address): u64 acquires AirdropManager,AdminStore {
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        if (simple_map::contains_key(&airdrop_manager.airdrop_claimed, &user_address)) {
+            let user_claims = simple_map::borrow(&airdrop_manager.airdrop_claimed, &user_address);
+            if (simple_map::contains_key(user_claims, &client_address)) {
+                *simple_map::borrow(user_claims, &client_address)
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    }
+
+    #[view]
+    public fun get_all_airdrop_amounts(): SimpleMap<address, u64> acquires AirdropManager, AdminStore {
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        airdrop_manager.airdrop_amount_per_user
+    }
+
+    #[view]
+    public fun get_all_client_balances(): SimpleMap<address, u64> acquires AirdropManager, AdminStore {
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        airdrop_manager.airdrop_client_wallet
+    }
+
+    /// Helper function to remove a client configuration (admin only)
+    public entry fun remove_client_config(
+        admin: &signer,
+        client_address: address
+    ) acquires AirdropManager,AdminStore {
+        let admin_addr = signer::address_of(admin);
+
+        let admin_data = borrow_global_mut<AdminStore>(PHOTON_ADMIN);
+        assert_admin(admin);
+        let airdrop_manager = borrow_global_mut<AirdropManager>(get_resource_address());
+                
+        if (simple_map::contains_key(&airdrop_manager.airdrop_amount_per_user, &client_address)) {
+            simple_map::remove(&mut airdrop_manager.airdrop_amount_per_user, &client_address);
+        };
+    }
+
+    /// Get remaining claimable amount for a user from a specific client
+    #[view]
+    public fun get_remaining_claimable(user_address: address, client_address: address): u64 acquires AirdropManager ,AdminStore {
+        let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
+        
+        if (!simple_map::contains_key(&airdrop_manager.airdrop_amount_per_user, &client_address)) {
+            return 0
+        };
+
+        let amount_per_user = *simple_map::borrow(&airdrop_manager.airdrop_amount_per_user, &client_address);
+        let claimed_amount = get_claimed_amount(user_address, client_address);
+        
+        if (claimed_amount >= amount_per_user) {
+            0
+        } else {
+            amount_per_user - claimed_amount
+        }
     }
 }
