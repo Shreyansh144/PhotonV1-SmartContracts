@@ -9,12 +9,13 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
 
     // ====== ERROR CODES ======
     const E_NOT_ADMIN: u64 = 1;
-    const E_NOT_REGISTERED: u64 = 2;
-    const E_OWNER_NOT_HAVING_ENOUGH_COIN: u64 = 3;
-    const E_ALREADY_EXISTS: u64 = 4;
+    const E_OWNER_NOT_INITIALIZED: u64 = 2;
+    const E_USER_NOT_HAVING_ENOUGH_COIN: u64 = 3;
+    const E_MERCHANT_NOT_HAVING_ENOUGH_COIN: u64 = 4;
     const E_MANAGER_NOT_INITIALIZED: u64 = 5;
     const E_INVALID_AMOUNT: u64 = 6;
     const E_INVALID_OWNER: u64 = 7;
+    const E_ALREADY_EXISTS: u64 = 8;
 
     const PHOTON_ADMIN: address = @photon_admin;
 
@@ -41,10 +42,10 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
     public entry fun initialize_merchant_manager(admin: &signer) {
         let admin_addr = signer::address_of(admin);
         assert!(admin_addr == PHOTON_ADMIN, error::invalid_argument(E_INVALID_OWNER));
-        
-        if (!exists<MerchantStoreManager>(admin_addr)) {
+
+        if (!exists<AdminStore>(admin_addr)) {
             // Create resource account for merchant management
-            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager");
+            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager_test1");
             let merchant_manager_addr = signer::address_of(&merchant_manager);
             let merchant_signer_from_cap = account::create_signer_with_capability(&merchant_cap);
             
@@ -60,17 +61,10 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
     }
 
     // ====== Credit merchant wallet ======
-    public entry fun credit_merchant_wallet(user: &signer, amount: u128) 
-        acquires MerchantStoreManager {
+    public entry fun credit_merchant_wallet(user: &signer, amount: u128) acquires AdminStore{
         let user_addr = signer::address_of(user);
-        
-        if (!exists<AdminStore>(PHOTON_ADMIN)) {
-            abort E_OWNER_NOT_INITIALIZED;
-        };
-
-        let admin_store_data = borrow_global_mut<AdminStore>(PHOTON_ADMIN);
-
-        let merchant_addr = admin_store_data.merchant_manager_address;
+      
+        let merchant_addr = get_merchant_manager_address();
 
         if (!exists<MerchantStoreManager>(merchant_addr)) { 
             abort E_MANAGER_NOT_INITIALIZED;
@@ -82,22 +76,15 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
 
         assert!(balance(user_addr) >= (amount as u64), error::invalid_argument(E_USER_NOT_HAVING_ENOUGH_COIN));
 
-        primary_fungible_store::ensure_primary_store_exists(merchant_manager_addr, get_metadata());
-        transfer(user, merchant_manager_addr, (amount as u64));
+        primary_fungible_store::ensure_primary_store_exists(merchant_addr, get_metadata());
+        transfer(user, merchant_addr, (amount as u64));
     }
 
     // ====== Withdraw all merchant balances (settlement) ======
     public entry fun debit_merchant_wallet(admin: &signer, amount: u128) acquires AdminStore, MerchantStoreManager {
         assert_admin(admin);
         let admin_addr = signer::address_of(admin);
-
-        if (!exists<AdminStore>(admin_addr)) {
-            abort E_OWNER_NOT_INITIALIZED;
-        };
-
-        let admin_store_data = borrow_global_mut<AdminStore>(PHOTON_ADMIN);
-
-        let merchant_addr = admin_store_data.merchant_manager_address;
+        let merchant_addr = get_merchant_manager_address();
 
         if (!exists<MerchantStoreManager>(merchant_addr)) { 
             abort E_MANAGER_NOT_INITIALIZED;
@@ -112,7 +99,18 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
         let merchant_data = borrow_global_mut<MerchantStoreManager>(merchant_addr);
         let merchant_signer_from_cap = account::create_signer_with_capability(&merchant_data.merchant_signer_cap);
 
-        transfer(&manager_signer_from_cap, admin_addr, (amount as u64));
+        transfer(&merchant_signer_from_cap, admin_addr, (amount as u64));
+    }
+
+    /// Function to get merchant_manager_address from AdminStore
+    public fun get_merchant_manager_address(): address acquires AdminStore{
+        if (!exists<AdminStore>(PHOTON_ADMIN)) {
+            abort E_OWNER_NOT_INITIALIZED;
+        };
+
+        let admin_store_data = borrow_global<AdminStore>(PHOTON_ADMIN);
+        let merchant_addr = admin_store_data.merchant_manager_address;
+        merchant_addr
     }
 
 }
