@@ -24,3 +24,5 @@ move_to(admin, UserCap {
 15. User name and onboarding ClientRegistry
 
 16. simpleMap isDeprecated
+
+17. whilelisted should be simple map not vector
