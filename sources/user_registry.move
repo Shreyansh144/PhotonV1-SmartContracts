@@ -10,7 +10,6 @@
 //     use aptos_framework::coin::{Self, Coin};
 //     use aptos_framework::managed_coin;
 //     use std::string::{String, utf8};
-//     // use photon_client_deployer::PhotonClientModule::{Self, ClientRegistry}
 
 //     const PHOTON_ADMIN: address = @photon_admin;
 
@@ -36,9 +35,8 @@
 //         identity_hash: String,         // SHA256 hash of email (as bytes)
 //         created_at: u64,                   // unix timestamp
 //         active: bool,                      // active flag
-//         // coin_type: address,                // Note: (if required) address of PAT token module / coin marker (informational)
 //         total_tokens_earned: u128,
-//         total_tokens_spent: u128,
+//         // total_tokens_spent: u128,    //if required
 //         wallet_balance: u128,
 //         // client_id: ClientRegistry
 //     }
@@ -80,7 +78,7 @@
 //             created_at: now,
 //             active: true,
 //             total_tokens_earned: 0,
-//             total_tokens_spent: 0,
+//             // total_tokens_spent: 0,
 //             wallet_balance: 0,
 //         });
 //     }
@@ -107,27 +105,25 @@
 //     // ====== Token accounting helpers (admin-triggered) ======
 //     // Credit earned tokens to a user (tracked only numerically here)
 //     public entry fun credit_tokens(admin: &signer, user_address: address, amount: u128) acquires Admin, UserRegistry {
-//         assert_admin(admin);
 //         if (!exists<UserRegistry>(user_address)) {
 //             abort E_NOT_REGISTERED;
 //         };
 //         let user_ref = borrow_global_mut<UserRegistry>(user_address);
 //         user_ref.wallet_balance = user_ref.wallet_balance + amount;
-//         //needs to add transfer tokens from admin via pat_coin
 //     }
 
 //     // Debit tokens when user spends
-//     public entry fun debit_tokens(admin: &signer, user_address: address, amount: u128) acquires Admin, UserRegistry {
-//         assert_admin(admin);
-//         if (!exists<UserRegistry>(user_address)) {
+//     public entry fun debit_tokens(user: &signer, to_address: address, amount: u128) acquires Admin, UserRegistry {
+//         let user_addr = signer::address_of(user);
+
+//         if (!exists<UserRegistry>(user_addr)) {
 //             abort E_NOT_REGISTERED;
 //         };
-//         let user_ref = borrow_global_mut<UserRegistry>(user_address);
-//         if (user_ref.wallet_balance < amount) {
+//         let user_data = borrow_global_mut<UserRegistry>(user_addr);
+//         if (user_data.wallet_balance < amount) {
 //             abort E_INSUFFICIENT_BALANCE;
 //         };
-//         user_ref.wallet_balance = user_ref.wallet_balance - amount;
-//         //needs to add transfer tokens from user wallet via protocol/merchant
+//         user_data.wallet_balance = user_data.wallet_balance - amount;
 //     }
 
 //     // ====== Convenience: check if registered ======
