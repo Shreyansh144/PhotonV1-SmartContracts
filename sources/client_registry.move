@@ -1,12 +1,9 @@
 // module photon_client_deployer::PhotonClientModule {
 //     use std::signer;
-//     // use std::vector;
-//     // use std::string;
 //     use std::option;
 //     use std::error;
 //     use std::timestamp;
 //     use aptos_std::simple_map::{Self, SimpleMap};
-//     // use aptos_std::event::{Self, EventHandle};
 //     use aptos_framework::account;
 //     use pat_token_deployer::pat_coin::{ Self, get_metadata,transfer,balance};
 //     use std::string::{String, utf8};

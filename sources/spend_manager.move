@@ -11,6 +11,6 @@ module photon_spend_manager::PhotonSpendManagerModule {
     ) {
         assert!(amount > 0, E_INVALID_AMOUNT);
         debit_tokens(user,amount);
-        credit_merchant_wallet(user,amount);
+        credit_merchant_wallet(user,1,amount);
     }
 }
