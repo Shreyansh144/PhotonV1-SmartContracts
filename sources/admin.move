@@ -51,7 +51,7 @@ module photon_admin_deployer::PhotonAdmin {
     public entry fun init_admin(admin: &signer) {
         let admin_addr = signer::address_of(admin);
         assert!(admin_addr == PHOTON_ADMIN, error::invalid_argument(E_INVALID_OWNER));
-        let (admin_manager, admin_cap) = account::create_resource_account(admin, b"admin_test_2");
+        let (admin_manager, admin_cap) = account::create_resource_account(admin, b"admin_test_3");
         let admin_resource_addr = signer::address_of(&admin_manager);
         let admin_signer_from_cap = account::create_signer_with_capability(&admin_cap);
 
@@ -73,7 +73,7 @@ module photon_admin_deployer::PhotonAdmin {
         primary_fungible_store::ensure_primary_store_exists(admin_addr, get_metadata());
     }
 
-    public entry fun credit_admin_wallet(admin: &signer, amount: u128) acquires AdminPanel{
+    public entry fun credit_admin_manager_wallet(admin: &signer, amount: u128) acquires AdminPanel{
         assert_admin(admin);
 
         let admin_addr = signer::address_of(admin);
@@ -93,7 +93,7 @@ module photon_admin_deployer::PhotonAdmin {
         transfer(admin, admin_resource_addr, (amount as u64));
     }
 
-    public entry fun debit_admin_wallet(user: &signer, amount: u128) acquires AdminPanel, Capabilities {
+    public entry fun debit_admin_manager_wallet(user: &signer, amount: u128) acquires AdminPanel, Capabilities {
         
         let user_addr = signer::address_of(user);
         let admin_resource_addr = get_admin_resource_address();
@@ -106,7 +106,7 @@ module photon_admin_deployer::PhotonAdmin {
             abort E_INVALID_AMOUNT;
         };
 
-        assert!(balance(user_addr) >= (amount as u64), error::invalid_argument(E_ADMIN_MANAGER_NOT_HAVING_ENOUGH_COIN));
+        assert!(balance(admin_resource_addr) >= (amount as u64), error::invalid_argument(E_ADMIN_MANAGER_NOT_HAVING_ENOUGH_COIN));
 
         let admin_resource_data = borrow_global_mut<Capabilities>(admin_resource_addr);
         let admin_signer_from_cap = account::create_signer_with_capability(&admin_resource_data.admin_signer_cap);

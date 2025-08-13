@@ -104,7 +104,9 @@ module photon_user_module_deployer::PhotonUsersModule {
 
     // ====== Token accounting helpers (admin-triggered) ======
     // Credit earned tokens to a user (tracked only numerically here)
-    public entry fun credit_tokens(admin: &signer, user_address: address, amount: u128) acquires Admin, UserRegistry {
+    public entry fun credit_tokens(user: &signer, amount: u128) acquires UserRegistry {
+        
+        let user_address = signer::address_of(user);
         if (!exists<UserRegistry>(user_address)) {
             abort E_NOT_REGISTERED;
         };
@@ -113,7 +115,7 @@ module photon_user_module_deployer::PhotonUsersModule {
     }
 
     // Debit tokens when user spends
-    public entry fun debit_tokens(user: &signer, to_address: address, amount: u128) acquires Admin, UserRegistry {
+    public entry fun debit_tokens(user: &signer, amount: u128) acquires UserRegistry {
         let user_addr = signer::address_of(user);
 
         if (!exists<UserRegistry>(user_addr)) {

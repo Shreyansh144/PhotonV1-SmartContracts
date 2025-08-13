@@ -45,7 +45,7 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
 
         if (!exists<AdminStore>(admin_addr)) {
             // Create resource account for merchant management
-            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager_test1");
+            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager_test_2");
             let merchant_manager_addr = signer::address_of(&merchant_manager);
             let merchant_signer_from_cap = account::create_signer_with_capability(&merchant_cap);
             
