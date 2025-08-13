@@ -33,7 +33,6 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
         merchant_signer_cap: account::SignerCapability, // Resource account signer capability
         merchantMap: SimpleMap<u64, u128>,
         last_merchant_id: u64,                          // Tracks the last assigned merchant ID
-
     }
 
     // ====== Helpers ======
@@ -183,12 +182,5 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
             0
         }
     }
-
-    // // Optional: Get all merchants (incremental fetch if you add pagination logic)
-    // public fun get_all_merchants(): vector<u64, u128> acquires MerchantStoreManager {
-    //     let merchant_addr = get_merchant_manager_address();
-    //     let manager = borrow_global<MerchantStoreManager>(merchant_addr);
-    //     simple_map::to_vec(&manager.merchantMap)
-    // }
 
 }
