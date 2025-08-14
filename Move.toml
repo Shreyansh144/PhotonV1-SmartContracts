@@ -9,14 +9,15 @@ AptosFramework = { git = "https://github.com/aptos-labs/aptos-framework.git", su
 photon_dev = "48561c322e6c0f53609573ead6006d6565a04b9f7f0a409a88f6f84dcc2b9680"
 zero = "0000000000000000000000000000000000000000000000000000000000000000"
 photon_admin = "48561c322e6c0f53609573ead6006d6565a04b9f7f0a409a88f6f84dcc2b9680" #needs to update
-pat_token_deployer = "0x3e2985d7fd833c8005a9ede91fa9a337a277ae38c4e18e25d704682b84ca68fe"
+pat_token_deployer = "0x4a271655410c34cfe90fad1bb037c66b4ab90405974bf7fdd708859a9ed9de60"
 photon_admin_deployer = "0x34505b69ef7728ecad42d9870b6710757a814f16bfb64f25d1b2ed3a3332efd6"
-photon_client_deployer = "0x603386baa4b4fa62ff17aeff7082cbcb03b0ec6a6f3ff52f49a9f2df7716e4f8"
+photon_client_deployer = "0x4a271655410c34cfe90fad1bb037c66b4ab90405974bf7fdd708859a9ed9de60"
 photon_merchant_deployer = "0x1e11cb8245795f4f5f731ffe5dda252a3e58b04e8cec77852a7c55062b87b1a5"
 photon_user_module_deployer = "0xb100c32e3daa1c5ace230b4a43a02d79bf55f8d7f6322da91e6af51f92d24fbb"
 photon_spend_manager = "0xb100c32e3daa1c5ace230b4a43a02d79bf55f8d7f6322da91e6af51f92d24fbb"
 photon_purchase_manager = "0xb100c32e3daa1c5ace230b4a43a02d79bf55f8d7f6322da91e6af51f92d24fbb"
-airdrop_manager_deployer = "0x3e2985d7fd833c8005a9ede91fa9a337a277ae38c4e18e25d704682b84ca68fe"
+airdrop_manager_deployer = "0x4a271655410c34cfe90fad1bb037c66b4ab90405974bf7fdd708859a9ed9de60"
 processors1 = "0x1"
 processors2 = "0x2"
 processors3 = "0x3"
+

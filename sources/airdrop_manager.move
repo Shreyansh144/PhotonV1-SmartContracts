@@ -10,6 +10,7 @@ module airdrop_manager_deployer::airdrop_manager_module {
     use aptos_std::string::{Self, String};
     use pat_token_deployer::pat_coin::{ Self, get_metadata,transfer,balance};
     use aptos_std::table::{Self, Table}; 
+    use photon_client_deployer::PhotonClientModule; 
 
     // Error codes
     const E_INVALID_OWNER: u64 = 1;
@@ -19,6 +20,9 @@ module airdrop_manager_deployer::airdrop_manager_module {
     const E_INVALID_ATTESTATION: u64 = 5;
     const E_NOT_AUTHORIZED: u64 = 6;
     const E_OWNER_NOT_INITIALIZED: u64 = 7;
+    const E_CLIENT_NOT_REGISTERED: u64 = 7;
+
+    
 
     const PHOTON_ADMIN: address = @photon_admin;
 
@@ -52,19 +56,17 @@ module airdrop_manager_deployer::airdrop_manager_module {
 
     /// Helper function to validate if client is registered in PhotonClientModule
     fun assert_client_registered(client_address: address) {
-        // Check if ClientRegistry exists at the client address
-        //Note: needs to update
-        // assert!(
-        //     PhotonClientModule::is_client_registered(client_address),
-        //     error::invalid_argument(E_CLIENT_NOT_REGISTERED)
-        // );
+        assert!(
+            PhotonClientModule::is_client_registered(client_address),
+            error::invalid_argument(E_CLIENT_NOT_REGISTERED)
+        );
     }
 
     public entry fun init_airdrop_manager(admin: &signer) {
         let admin_addr = signer::address_of(admin);
         assert!(admin_addr == PHOTON_ADMIN, error::invalid_argument(E_INVALID_OWNER));
 
-        let (airdrop_resource_signer, airdrop_cap) = account::create_resource_account(admin, b"airdrop_manager_test_7");
+        let (airdrop_resource_signer, airdrop_cap) = account::create_resource_account(admin, b"airdrop_manager_test_8");
         let resource_addr = signer::address_of(&airdrop_resource_signer);
         let airdrop_signer_from_cap = account::create_signer_with_capability(&airdrop_cap);
 
@@ -162,7 +164,7 @@ module airdrop_manager_deployer::airdrop_manager_module {
         assert!(admin_addr == admin_data.owner, error::permission_denied(E_NOT_AUTHORIZED));
         
         // Validate client is registered in PhotonClientModule
-        // assert_client_registered(client_address);
+        assert_client_registered(client_address);
         
         let airdrop_manager = borrow_global_mut<AirdropManager>(resource_addr);
 
@@ -403,10 +405,9 @@ module airdrop_manager_deployer::airdrop_manager_module {
     #[view]
     public fun can_claim_amount(user_address: address, client_address: address, amount: u64): bool acquires AirdropManager, AdminStore {
         // First check if client is registered
-        // Note: needs to update
-        // if (!PhotonClientModule::is_client_registered(client_address)) {
-        //     return false
-        // };
+        if (!PhotonClientModule::is_client_registered(client_address)) {
+            return false
+        };
         
         let remaining = get_remaining_claimable(user_address, client_address);
         let airdrop_manager = borrow_global<AirdropManager>(get_resource_address());
@@ -421,19 +422,19 @@ module airdrop_manager_deployer::airdrop_manager_module {
     }
 
     /// Note: needs to update:- Check if client is registered in PhotonClientModule
-    // #[view]
-    // public fun is_client_registered_in_photon(client_address: address): bool {
-    //     PhotonClientModule::is_client_registered(client_address)
-    // }
+    #[view]
+    public fun is_client_registered_in_photon(client_address: address): bool {
+        PhotonClientModule::is_client_registered(client_address)
+    }
 
-    // /// Get comprehensive client information
-    // #[view]
-    // public fun get_client_info(client_address: address): (bool, bool, u64, u64) acquires AirdropManager, AdminStore {
-    //     let is_registered = PhotonClientModule::is_client_registered(client_address);
-    //     let is_configured = is_client_configured(client_address);
-    //     let airdrop_amount = get_airdrop_amount(client_address);
-    //     let client_balance = get_client_balance(client_address);
+    /// Get comprehensive client information
+    #[view]
+    public fun get_client_info(client_address: address): (bool, bool, u64, u64) acquires AirdropManager, AdminStore {
+        let is_registered = PhotonClientModule::is_client_registered(client_address);
+        let is_configured = is_client_configured(client_address);
+        let airdrop_amount = get_airdrop_amount(client_address);
+        let client_balance = get_client_balance(client_address);
         
-    //     (is_registered, is_configured, airdrop_amount, client_balance)
-    // }
+        (is_registered, is_configured, airdrop_amount, client_balance)
+    }
 }

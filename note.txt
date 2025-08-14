@@ -30,3 +30,5 @@ move_to(admin, UserCap {
 19. platform fee and fee logic needs to add every where
 
 20. need to add function: true and false logic
+
+21. check if u wanna updated client manager to resource account
