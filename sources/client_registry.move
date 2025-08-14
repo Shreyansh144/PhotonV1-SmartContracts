@@ -321,18 +321,4 @@ module photon_client_deployer::PhotonClientModule {
 
         *simple_map::borrow(&maps.clientMap, &client_seeds)
     }
-
-    // Helper function to fetch client address by id
-    // #[view]
-    // public fun get_client_id(
-    //     client_id: u64
-    // ): address acquires ClientStore {
-    //     let client_data = borrow_global<ClientStore>(client_addr);
-
-    //     if (simple_map::contains_key(&client_data.client_id_map, &client_id)) {
-    //         *simple_map::borrow(&client_data.client_id_map, &client_id)
-    //     } else {
-    //         @0x0
-    //     }
-    // }
 }
