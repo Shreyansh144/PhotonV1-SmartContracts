@@ -1,6 +1,6 @@
 module photon_spend_manager::PhotonSpendManagerModule {
     use std::signer;
-    use photon_user_module_deployer::PhotonUsersModule::{Self, debit_tokens, is_registered};
+    use photon_user_module_deployer::PhotonUsersModule::{Self, is_registered};
     use photon_merchant_deployer::PhotonMerchantManagerModule::{Self, credit_merchant_wallet};
 
     const E_INVALID_AMOUNT: u64 = 1;

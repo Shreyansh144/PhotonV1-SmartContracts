@@ -120,7 +120,7 @@ module photon_user_module_deployer::PhotonUsersModule {
 
     // ====== Get user wallet balance ======
     #[view]
-    public fun get_user_balance(user_address: address): u64 acquires UserRegistry {
+    public fun get_user_balance(user_address: address): u64 {
         if (!exists<UserRegistry>(user_address)) {
             abort E_NOT_REGISTERED;
         };

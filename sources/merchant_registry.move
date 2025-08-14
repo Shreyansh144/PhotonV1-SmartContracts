@@ -10,8 +10,6 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
     use std::string::{String, utf8};
     use aptos_std::table::{Self, Table}; 
 
-
-
     const E_NOT_ADMIN: u64 = 1;
     const E_OWNER_NOT_INITIALIZED: u64 = 2;
     const E_USER_NOT_HAVING_ENOUGH_COIN: u64 = 3;
@@ -21,7 +19,6 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
     const E_INVALID_OWNER: u64 = 7;
     const E_ALREADY_EXISTS: u64 = 8;
     const E_INVALID_MERCHANT_ID: u64 = 9;
-
 
     const PHOTON_ADMIN: address = @photon_admin;
 
@@ -36,11 +33,11 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
         merchant_counter: u64,                
     }
 
-    struct Merchant has store, drop, copy  {
+    struct Merchant has store, drop, copy {
         name: String,
         description: String,
         tags: vector<String>,
-        quanitity: u128
+        quantity: u128  // Fixed typo: was "quanitity"
     }
 
     // ====== Helpers ======
@@ -58,7 +55,7 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
 
         if (!exists<AdminStore>(admin_addr)) {
             // Create resource account for merchant management
-            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager_test_3");
+            let (merchant_manager, merchant_cap) = account::create_resource_account(admin, b"merchant_manager_test_4");
             let merchant_manager_addr = signer::address_of(&merchant_manager);
             let merchant_signer_from_cap = account::create_signer_with_capability(&merchant_cap);
             
@@ -99,9 +96,10 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
 
         let manager = borrow_global_mut<MerchantStoreManager>(merchant_addr);
 
-        if (simple_map::contains_key(&manager.merchantMap, &merchant_id)) {
-            let current_balance_ref = simple_map::borrow_mut(&mut manager.merchantMap, &merchant_id);
-            *current_balance_ref = *current_balance_ref + amount;
+        // Fixed: Use table instead of simple_map
+        if (table::contains(&manager.merchantMap, merchant_id)) {
+            let merchant_ref = table::borrow_mut(&mut manager.merchantMap, merchant_id);
+            merchant_ref.quantity = merchant_ref.quantity + amount;
         } else {
             abort(E_INVALID_MERCHANT_ID);
         };
@@ -110,8 +108,11 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
         transfer(user, merchant_addr, (amount as u64));
     }
 
-
-    public entry fun debit_merchant_wallet(admin: &signer, amount: u128) acquires AdminStore, MerchantStoreManager {
+    public entry fun settlement_by_admin(
+        admin: &signer, 
+        merchant_id: u64,
+        amount: u128
+    ) acquires AdminStore, MerchantStoreManager {
         assert_admin(admin);
         let admin_addr = signer::address_of(admin);
         let merchant_addr = get_merchant_manager_address();
@@ -124,16 +125,95 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
             abort E_INVALID_AMOUNT;
         };
 
+        let manager = borrow_global_mut<MerchantStoreManager>(merchant_addr);
+        
+        // Check if merchant exists and has enough balance
+        if (!table::contains(&manager.merchantMap, merchant_id)) {
+            abort(E_INVALID_MERCHANT_ID);
+        };
+
+        let merchant_ref = table::borrow_mut(&mut manager.merchantMap, merchant_id);
+        if (merchant_ref.quantity < amount) {
+            abort(E_MERCHANT_NOT_HAVING_ENOUGH_COIN);
+        };
+
+        // Deduct from merchant balance
+        merchant_ref.quantity = merchant_ref.quantity - amount;
+
         assert!(balance(merchant_addr) >= (amount as u64), error::invalid_argument(E_MERCHANT_NOT_HAVING_ENOUGH_COIN));
 
-        let merchant_data = borrow_global_mut<MerchantStoreManager>(merchant_addr);
-        let merchant_signer_from_cap = account::create_signer_with_capability(&merchant_data.merchant_signer_cap);
+        let merchant_signer_from_cap = account::create_signer_with_capability(&manager.merchant_signer_cap);
 
         primary_fungible_store::ensure_primary_store_exists(admin_addr, get_metadata());
         transfer(&merchant_signer_from_cap, admin_addr, (amount as u64));
     }
 
-    public fun get_merchant_manager_address(): address acquires AdminStore{
+     public entry fun settlement_multiple_merchants_wallet(
+        admin: &signer,
+        merchant_ids: vector<u64>,
+        amounts: vector<u128>
+    ) acquires AdminStore, MerchantStoreManager {
+        assert_admin(admin);
+        let admin_addr = signer::address_of(admin);
+        let merchant_addr = get_merchant_manager_address();
+
+        if (!exists<MerchantStoreManager>(merchant_addr)) { 
+            abort E_MANAGER_NOT_INITIALIZED;
+        };
+
+        let merchant_count = vector::length(&merchant_ids);
+        let amount_count = vector::length(&amounts);
+        assert!(merchant_count == amount_count, error::invalid_argument(E_INVALID_AMOUNT));
+        assert!(merchant_count > 0, error::invalid_argument(E_INVALID_AMOUNT));
+
+        let manager = borrow_global_mut<MerchantStoreManager>(merchant_addr);
+        let total_amount: u128 = 0;
+        let i = 0;
+
+        while (i < merchant_count) {
+            let merchant_id = *vector::borrow(&merchant_ids, i);
+            let amount = *vector::borrow(&amounts, i);
+
+            if (amount == 0) {
+                abort E_INVALID_AMOUNT;
+            };
+
+            if (!table::contains(&manager.merchantMap, merchant_id)) {
+                abort E_INVALID_MERCHANT_ID;
+            };
+
+            let merchant_ref = table::borrow(&manager.merchantMap, merchant_id);
+            if (merchant_ref.quantity < amount) {
+                abort E_MERCHANT_NOT_HAVING_ENOUGH_COIN;
+            };
+
+            total_amount = total_amount + amount;
+            i = i + 1;
+        };
+
+        assert!(
+            balance(merchant_addr) >= (total_amount as u64), 
+            error::invalid_argument(E_MERCHANT_NOT_HAVING_ENOUGH_COIN)
+        );
+
+        i = 0;
+        while (i < merchant_count) {
+            let merchant_id = *vector::borrow(&merchant_ids, i);
+            let amount = *vector::borrow(&amounts, i);
+
+            let merchant_ref = table::borrow_mut(&mut manager.merchantMap, merchant_id);
+            merchant_ref.quantity = merchant_ref.quantity - amount;
+
+            i = i + 1;
+        };
+
+        // Transfer total amount to admin
+        let merchant_signer_from_cap = account::create_signer_with_capability(&manager.merchant_signer_cap);
+        primary_fungible_store::ensure_primary_store_exists(admin_addr, get_metadata());
+        transfer(&merchant_signer_from_cap, admin_addr, (total_amount as u64));
+    }
+
+    public fun get_merchant_manager_address(): address acquires AdminStore {
         if (!exists<AdminStore>(PHOTON_ADMIN)) {
             abort E_OWNER_NOT_INITIALIZED;
         };
@@ -156,33 +236,59 @@ module photon_merchant_deployer::PhotonMerchantManagerModule {
             abort E_MANAGER_NOT_INITIALIZED;
         };
 
-        let new_merchant = Merchant {
-            name: String,
-            description: String,
-            tags: vector<String>,
-            quanitity: 0
+        let manager = borrow_global_mut<MerchantStoreManager>(merchant_addr);
+        let counter = manager.merchant_counter + 1;
+
+        // Check if merchant already exists (optional safety check)
+        if (table::contains(&manager.merchantMap, counter)) {
+            abort E_ALREADY_EXISTS;
         };
 
-        let manager_list = borrow_global_mut<MerchantStoreManager>(merchant_addr);
-        let counter =  = manager.merchant_counter + 1;
+        let new_merchant = Merchant {
+            name,
+            description,
+            tags,
+            quantity: 0
+        };
 
-        table::upsert(&mut manager_list.merchantMap, counter, new_merchant);
-
-        manager_list.merchant_counter = counter;
+        table::add(&mut manager.merchantMap, counter, new_merchant);
+        manager.merchant_counter = counter;
     }
 
     #[view]
     public fun get_merchant_balance(
         merchant_id: u64
-    ): u128 acquires MerchantStoreManager,AdminStore {
+    ): u128 acquires MerchantStoreManager, AdminStore {
         let merchant_addr = get_merchant_manager_address();
         let manager = borrow_global<MerchantStoreManager>(merchant_addr);
 
-        if (simple_map::contains_key(&manager.merchantMap, &merchant_id)) {
-            *simple_map::borrow(&manager.merchantMap, &merchant_id)
+        if (table::contains(&manager.merchantMap, merchant_id)) {
+            let merchant = table::borrow(&manager.merchantMap, merchant_id);
+            merchant.quantity
         } else {
             0
         }
     }
 
+    #[view]
+    public fun get_merchant_info(
+        merchant_id: u64
+    ): (String, String, vector<String>, u128) acquires MerchantStoreManager, AdminStore {
+        let merchant_addr = get_merchant_manager_address();
+        let manager = borrow_global<MerchantStoreManager>(merchant_addr);
+
+        if (table::contains(&manager.merchantMap, merchant_id)) {
+            let merchant = table::borrow(&manager.merchantMap, merchant_id);
+            (merchant.name, merchant.description, merchant.tags, merchant.quantity)
+        } else {
+            abort E_INVALID_MERCHANT_ID
+        }
+    }
+
+    #[view]
+    public fun get_merchant_counter(): u64 acquires MerchantStoreManager, AdminStore {
+        let merchant_addr = get_merchant_manager_address();
+        let manager = borrow_global<MerchantStoreManager>(merchant_addr);
+        manager.merchant_counter
+    }
 }
